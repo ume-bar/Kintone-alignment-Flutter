@@ -1,11 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:kintone_flutter/env.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-void main() {
+Future main() async {
   runApp(const MyApp());
+  await dotenv.load(fileName: ".env");
+}
+
+final Map<String, String> postHeader = {
+  'X-Cybozu-API-Token': apiToken!,
+  'Content-Type': 'application/json'
+};
+
+final Map<String, String> getHeader = {
+  'X-Cybozu-API-Token': apiToken!,
+};
+
+Future<Map<String, dynamic>> postRecord(int number) async {
+  final Map<String, dynamic> postRecord = {
+    'app': id,
+    'record': {
+      'number': {'value': number},
+    }
+  };
+
+  return await http
+      .post(Uri.parse('$baseUrl/record.json'),
+          headers: postHeader, body: jsonEncode(postRecord))
+      .then(((response) {
+    Map<String, dynamic> rec = jsonDecode(response.body);
+    return rec;
+  }));
+}
+
+Future<Map<String, dynamic>> fetchRecords(String query) async {
+  String encodedQuery = Uri.encodeFull(query);
+  return await http
+      .get(
+          Uri.parse(
+            '$baseUrl/records.json?app=$id&query=$encodedQuery',
+          ),
+          headers: getHeader)
+      .then(((response) {
+    Map<String, dynamic> rec = jsonDecode(response.body);
+    return rec;
+  }));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +65,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
   final String title;
 
@@ -34,6 +79,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void _incrementCounter() {
     setState(() {
       _counter++;
+      fetchRecords('');
+      postRecord(_counter);
     });
   }
 
